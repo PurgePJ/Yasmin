@@ -98,14 +98,14 @@ class DataHelpers {
      */
     static function escapeMarkdown(string $text, bool $onlyCodeBlock = false, bool $onlyInlineCode = false) {
         if($onlyCodeBlock) {
-            return \preg_replace('/```/miu', "\\`\\`\\`", $text);
+            return \preg_replace('/(```)/miu', "\\`\\`\\`", $text);
         }
         
         if($onlyInlineCode) {
-            return \preg_replace('/(`|\\\\)/miu', '\\\\$1', $text);
+            return \preg_replace('/(`)/miu', '\\\\$1', $text);
         }
         
-        return \preg_replace('/(\\*|_|`|~|\\\\)/miu', '\\\\$1', $text);
+        return \preg_replace('/(\\*|_|`|~)/miu', '\\\\$1', $text);
     }
     
     /**
@@ -315,7 +315,8 @@ class DataHelpers {
      * @param callable|null                                  $filter
      * @param array                                          $options
      * @return \React\Promise\ExtendedPromiseInterface  This promise is cancelable.
-     * @throws \RangeException
+     * @throws \RangeException          The exception the promise gets rejected with, if waiting times out.
+     * @throws \OutOfBoundsException    The exception the promise gets rejected with, if the promise gets cancelled.
      */
     static function waitForEvent($emitter, string $event, ?callable $filter = null, array $options = array()) {
         $listener = null;
@@ -336,7 +337,7 @@ class DataHelpers {
                         if(!$filter(...$args)) {
                             return;
                         }
-                    } catch(\Throwable | \Exception | \Error $e) {
+                    } catch (\Throwable | \Exception | \Error $e) {
                         $emitter->removeListener($event, $listener);
                         return $reject($e);
                     }

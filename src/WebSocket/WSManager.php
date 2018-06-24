@@ -225,7 +225,6 @@ class WSManager implements \CharlotteDunois\Events\EventEmitterInterface {
         
         $this->on('ready', function () {
             $this->wsStatus = \CharlotteDunois\Yasmin\Client::WS_STATUS_CONNECTED;
-            $this->client->emit('ready');
         });
     }
     
@@ -235,12 +234,7 @@ class WSManager implements \CharlotteDunois\Events\EventEmitterInterface {
      */
     function __isset($name) {
         try {
-            if(\property_exists($this, $name)) {
-                return true;
-            }
-            
-            $this->$name;
-            return true;
+            return $this->$name !== null;
         } catch (\RuntimeException $e) {
             if($e->getTrace()[0]['function'] === '__get') {
                 return false;
@@ -409,7 +403,7 @@ class WSManager implements \CharlotteDunois\Events\EventEmitterInterface {
                             if($this->previous) {
                                 $this->previous = false;
                             }
-                        } catch(\Throwable | \Exception | \Error $e) {
+                        } catch (\Throwable | \Exception | \Error $e) {
                             $this->previous = !$this->previous;
                             $this->client->emit('error', $e);
                             $this->reconnect(true);

@@ -51,7 +51,7 @@ class Invite extends ClientBase {
         parent::__construct($client);
         
         $this->code = $invite['code'];
-        $this->guildID = ($client->guilds->has($invite['guild']['id']) ? $invite['guild']['id'] : (new \CharlotteDunois\Yasmin\Models\PartialGuild($client, $invite['guild'])));
+        $this->guildID = (!empty($invite['guild']) ? ($client->guilds->has($invite['guild']['id']) ? $invite['guild']['id'] : (new \CharlotteDunois\Yasmin\Models\PartialGuild($client, $invite['guild']))) : null);
         $this->channelID = ($client->channels->has($invite['channel']['id']) ? $invite['channel']['id'] : (new \CharlotteDunois\Yasmin\Models\PartialChannel($client, $invite['channel'])));
         $this->inviterID = (!empty($invite['inviter']) ? $client->users->patch($invite['inviter'])->id : null);
         
@@ -93,7 +93,7 @@ class Invite extends ClientBase {
                 return null;
             break;
             case 'guild':
-                if($this->guildID instanceof \CharlotteDunois\Yasmin\Models\PartialGuild) {
+                if($this->guildID === null || $this->guildID instanceof \CharlotteDunois\Yasmin\Models\PartialGuild) {
                     return $this->guildID;
                 }
                 

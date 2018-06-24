@@ -20,6 +20,8 @@ composer require charlottedunois/yasmin
 
 **Important Information**: All properties on class instances, which are implemented using a magic method (which means pretty much all properties), are **throwing** if the property doesn't exist.
 
+There is a WIP Gitbook with a few protips in it, feel free to read it: https://charlottedunois.gitbooks.io/yasmin-guide/content/
+
 # Example
 This is a fairly trivial example of using Yasmin. You should put all your listener code into try-catch blocks and handle exceptions accordingly.
 
@@ -45,7 +47,7 @@ $loop->run();
 There is no voice support, as there are many technical reasons against it.
 
 # Documentation
-https://charlottedunois.github.io/Yasmin/
+https://yasmin.neko.run
 
 # Issues
 If you think something is wrong, or not working as expected, then try to listen on the `error` event. This event gets emitted when an error inside the library (or event listener) gets caught. Make sure you also have a rejection handler for all promises, as unhandled promise rejections get swallowed. Feel free to open an issue with as much information as you can get.

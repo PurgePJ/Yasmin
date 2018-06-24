@@ -333,6 +333,15 @@ class Message extends ClientBase {
     }
     
     /**
+     * Returns the jump to message link for this message.
+     * @return string
+     */
+    function getJumpURL() {
+        $guild = ($this->channel->type === 'text' ? $this->guild->id : '@me');
+        return 'https://canary.discordapp.com/channels/'.$guild.'/'.$this->channel->id.'/'.$this->id;
+    }
+    
+    /**
      * Pins the message. Resolves with $this.
      * @return \React\Promise\ExtendedPromiseInterface
      */
@@ -353,7 +362,7 @@ class Message extends ClientBase {
     function react($emoji) {
         try {
             $emoji = $this->client->emojis->resolve($emoji);
-        } catch(\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException $e) {
             if(\is_numeric($e)) {
                 throw $e;
             }
@@ -476,7 +485,7 @@ class Message extends ClientBase {
         $this->mentions = new \CharlotteDunois\Yasmin\Models\MessageMentions($this->client, $this, $message);
         
         foreach($this->mentions->channels as $channel) {
-            $this->cleanContent = \str_replace($channel->__toString(), $channel->name, $this->cleanContent);
+            $this->cleanContent = \str_replace('<#'.$channel->id.'>', $channel->name, $this->cleanContent);
         }
         
         foreach($this->mentions->roles as $role) {
@@ -485,6 +494,12 @@ class Message extends ClientBase {
         
         foreach($this->mentions->users as $user) {
             $this->cleanContent = \str_replace($user->__toString(), ($this->channel->type === 'text' && $this->channel->guild->members->has($user->id) ? $this->channel->guild->members->get($user->id)->displayName : $user->username), $this->cleanContent);
+        }
+        
+        if(!empty($message['member']) && !$this->guild->members->has($this->author->id)) {
+            $member = $message['member'];
+            $member['user'] = $message['author'];
+            $this->guild->_addMember($member, true);
         }
     }
 }

@@ -683,16 +683,38 @@ class Guild extends ClientBase {
                 return;
             }
             
-            $listener = function ($guild) use(&$listener, $resolve) {
+            $received = 0;
+            $timers = array();
+            
+            $listener = function ($guild, $members) use(&$listener, $query, $limit, &$received, &$timers, $resolve) {
                 if($guild->id !== $this->id) {
                     return;
                 }
                 
-                if($this->members->count() === $this->memberCount) {
+                $received += $members->count();
+                
+                if((!empty($query) && $members->count() < 1000) || ($limit > 0 && $received >= $limit) || $this->members->count() === $this->memberCount) {
+                    if(!empty($timers)) {
+                        foreach($timers as $timer) {
+                            $this->client->cancelTimer($timer);
+                        }
+                    }
+                    
                     $this->client->removeListener('guildMembersChunk', $listener);
                     $resolve($this);
                 }
             };
+            
+            if(!empty($query)) {
+                $timers[] = $this->client->addTimer(110, function (&$listener, &$timers, $resolve) {
+                    foreach($timers as $timer) {
+                        $this->client->cancelTimer($timer);
+                    }
+                    
+                    $this->client->removeListener('guildMembersChunk', $listener);
+                    $resolve($this);
+                });
+            }
             
             $this->client->on('guildMembersChunk', $listener);
             
@@ -705,7 +727,11 @@ class Guild extends ClientBase {
                 )
             ));
             
-            $this->client->addTimer(120, function () use (&$listener, $reject) {
+            $timers[] = $this->client->addTimer(120, function () use (&$listener, &$timers, $reject) {
+                foreach($timers as $timer) {
+                    $this->client->cancelTimer($timer);
+                }
+                
                 if($this->members->count() < $this->memberCount) {
                     $this->client->removeListener('guildMembersChunk', $listener);
                     $reject(new \Exception('Members did not arrive in time'));
