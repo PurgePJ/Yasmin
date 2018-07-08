@@ -122,7 +122,7 @@ class Message extends ClientBase {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      *
      * @throws \RuntimeException
      * @internal
@@ -193,19 +193,18 @@ class Message extends ClientBase {
      *
      * Options are as following:
      *
-     * <pre>
+     * ```
      * array(
      *   'max' => int, (max. message reactions to collect)
      *   'time' => int, (duration, in seconds, default 30)
      *   'errors' => array, (optional, which failed "conditions" (max not reached in time ("time")) lead to a rejected promise, defaults to [])
      * )
-     * </pre>
+     * ```
      *
      * @param callable  $filter   The filter to only collect desired reactions.
      * @param array     $options  The collector options.
      * @return \React\Promise\ExtendedPromiseInterface
      * @see \CharlotteDunois\Yasmin\Models\MessageReaction
-     *
      */
     function collectReactions(callable $filter, array $options = array()) {
         return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use ($filter, $options) {
@@ -227,7 +226,7 @@ class Message extends ClientBase {
                 }
             };
             
-            $timer = $this->client->addTimer((int) ($options['time'] ?? 30), function() use (&$collect, &$listener, $options, $resolve, $reject) {
+            $timer = $this->client->addTimer((int) ($options['time'] ?? 30), function () use (&$collect, &$listener, $options, $resolve, $reject) {
                 $this->client->removeListener('messageReactionAdd', $listener);
                 
                 if(\in_array('time', (array) ($options['errors'] ?? array())) && $collect->count() < ($options['max'] ?? 0)) {

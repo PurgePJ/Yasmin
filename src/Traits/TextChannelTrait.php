@@ -70,13 +70,13 @@ trait TextChannelTrait {
      *
      * Options are as following (all are optional):
      *
-     * <pre>
+     * ```
      * array(
      *   'max' => int, (max. messages to collect)
      *   'time' => int, (duration, in seconds, default 30)
      *   'errors' => array, (optional, which failed "conditions" (max not reached in time ("time")) lead to a rejected promise, defaults to [])
      * )
-     * </pre>
+     * ```
      *
      * @param callable  $filter   The filter to only collect desired messages.
      * @param array     $options  The collector options.
@@ -103,7 +103,7 @@ trait TextChannelTrait {
                 }
             };
             
-            $timer = $this->client->addTimer((int) ($options['time'] ?? 30), function() use (&$collect, &$listener, $options, $resolve, $reject) {
+            $timer = $this->client->addTimer((int) ($options['time'] ?? 30), function () use (&$collect, &$listener, $options, $resolve, $reject) {
                 $this->client->removeListener('message', $listener);
                 
                 if(\in_array('time', (array) ($options['errors'] ?? array())) && $collect->count() < ($options['max'] ?? 0)) {
@@ -137,14 +137,14 @@ trait TextChannelTrait {
      *
      * Options are as following:
      *
-     * <pre>
+     * ```
      * array(
      *   'after' => int, (message ID)
      *   'around' => int, (message ID)
      *   'before' => int, (message ID)
      *   'limit' => int, (1-100, defaults to 50)
      * )
-     * </pre>
+     * ```
      *
      * @param array  $options
      * @return \React\Promise\ExtendedPromiseInterface
@@ -170,10 +170,10 @@ trait TextChannelTrait {
      *
      * Options are as following (all are optional):
      *
-     * <pre>
+     * ```
      * array(
      *    'embed' => array|\CharlotteDunois\Yasmin\Models\MessageEmbed, (an (embed) array/object or an instance of MessageEmbed)
-     *    'files' => array, (an array of <code>[ 'name' => string, 'data' => string || 'path' => string ]</code> or just plain file contents, file paths or URLs)
+     *    'files' => array, (an array of `[ 'name' => string, 'data' => string || 'path' => string ]` or just plain file contents, file paths or URLs)
      *    'nonce' => string, (a snowflake used for optimistic sending)
      *    'disableEveryone' => bool, (whether @everyone and @here should be replaced with plaintext, defaults to client option disableEveryone)
      *    'tts' => bool,
@@ -186,7 +186,7 @@ trait TextChannelTrait {
      *   *   'char' => string, (The string to split on)
      *   *   'maxLength' => int, (The max. length of each message)
      *   * )
-     * </pre>
+     * ```
      *
      * @param string  $content  The message content.
      * @param array   $options  Any message options.
@@ -238,7 +238,7 @@ trait TextChannelTrait {
                                 $fs = null;
                                 if($files) {
                                     $fs = $files;
-                                    $files = nulL;
+                                    $files = null;
                                 }
                                 
                                 $message = array(
@@ -363,6 +363,7 @@ trait TextChannelTrait {
     /**
      * @param \CharlotteDunois\Yasmin\Models\User  $user
      * @param int|null                             $timestamp
+     * @return boolean
      * @internal
      */
     function _updateTyping(\CharlotteDunois\Yasmin\Models\User $user, ?int $timestamp = null) {
@@ -371,18 +372,20 @@ trait TextChannelTrait {
         }
         
         $typing = $this->typings->get($user->id);
-        if($typing && $typing['timer'] instanceof \React\EventLoop\Timer\Timer) {
+        if($typing && ($typing['timer'] instanceof \React\EventLoop\Timer\TimerInterface || $typing['timer'] instanceof \React\EventLoop\TimerInterface)) {
             $this->client->cancelTimer($typing['timer']);
         }
         
-        $timer = $this->client->addTimer(6, function ($client) use ($user) {
+        $timer = $this->client->addTimer(9, function () use ($user) {
             $this->typings->delete($user->id);
-            $client->emit('typingStop', $this, $user);
+            $this->client->emit('typingStop', $this, $user);
         });
         
         $this->typings->set($user->id, array(
             'timestamp' => (int) $timestamp,
             'timer' => $timer
         ));
+        
+        return ($typing === null);
     }
 }

@@ -50,7 +50,7 @@ class ClientUser extends User {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      *
      * @throws \RuntimeException
      * @internal
@@ -98,7 +98,7 @@ class ClientUser extends User {
     
     /**
      * Set your status. Resolves with $this.
-     * @param string  $status  Valid values are: <code>online</code>, <code>idle</code>, <code>dnd</code> and <code>invisible</code>.
+     * @param string  $status  Valid values are: `online`, `idle`, `dnd` and `invisible`.
      * @return \React\Promise\ExtendedPromiseInterface
      * @example ../../examples/docs-examples.php 25 2
      */
@@ -171,10 +171,10 @@ class ClientUser extends User {
     /**
      * Set your presence. Ratelimit is 5/60s, which gets handled by this method and after the ratelimit passed, it will set the last set presence as presence, skipping all previous set presences. Resolves with $this.
      *
-     * <pre>
+     * ```
      * array(
      *     'afk' => bool,
-     *     'since' => integer|null,
+     *     'since' => int|null,
      *     'status' => string,
      *     'game' => array(
      *         'name' => string,
@@ -182,7 +182,7 @@ class ClientUser extends User {
      *         'url' => string|null
      *     )|null
      * )
-     * </pre>
+     * ```
      *
      *  Any field in the first dimension is optional and will be automatically filled with the last known value.
      *
@@ -256,11 +256,11 @@ class ClientUser extends User {
     /**
      * Creates a new Group DM with the owner of the access tokens. Resolves with an instance of GroupDMChannel. The structure of the array is as following:
      *
-     * <pre>
+     * ```
      * array(
-     *   accessToken => \CharlotteDunois\Yasmin\Models\User|int (int = user ID)
+     *    accessToken => \CharlotteDunois\Yasmin\Models\User|int (int = user ID)
      * )
-     * </pre>
+     * ```
      *
      * The nicks array is an associative array of <code>userID => nick</code>. The nick defaults to the username.
      *

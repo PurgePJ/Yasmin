@@ -18,14 +18,14 @@ trait GuildChannelTrait {
      *
      * Options are as following (all are optional).
      *
-     * <pre>
+     * ```
      * array(
      *    'maxAge' => int,
      *    'maxUses' => int, (0 = unlimited)
      *    'temporary' => bool,
      *    'unique' => bool
      * )
-     * </pre>
+     * ```
      *
      * @param array $options
      * @return \React\Promise\ExtendedPromiseInterface
@@ -97,7 +97,7 @@ trait GuildChannelTrait {
      *
      * Options are as following (at least one is required).
      *
-     * <pre>
+     * ```
      * array(
      *    'name' => string,
      *    'position' => int,
@@ -108,7 +108,7 @@ trait GuildChannelTrait {
      *    'parent' => \CharlotteDunois\Yasmin\Models\CategoryChannel|int, (int = channel ID)
      *    'permissionOverwrites' => \CharlotteDunois\Yasmin\Utils\Collection|array (an array or Collection of PermissionOverwrite instances or permission overwrite arrays)
      * )
-     * </pre>
+     * ```
      *
      * @param array   $options
      * @param string  $reason
@@ -203,6 +203,7 @@ trait GuildChannelTrait {
      * @param \CharlotteDunois\Yasmin\Models\GuildMember|string  $member
      * @return \CharlotteDunois\Yasmin\Models\Permissions
      * @throws \InvalidArgumentException
+     * @see https://discordapp.com/developers/docs/topics/permissions#permission-overwrites
      */
     function permissionsFor($member) {
         $member = $this->guild->members->resolve($member);
@@ -211,11 +212,7 @@ trait GuildChannelTrait {
             return (new \CharlotteDunois\Yasmin\Models\Permissions(\CharlotteDunois\Yasmin\Models\Permissions::ALL));
         }
         
-        $maxBitfield = $member->roles->map(function ($role) {
-            return $role->permissions->bitfield;
-        })->max();
-        
-        $permissions = new \CharlotteDunois\Yasmin\Models\Permissions($maxBitfield);
+        $permissions = $member->permissions;
         
         if($permissions->has('ADMINISTRATOR')) {
             return (new \CharlotteDunois\Yasmin\Models\Permissions(\CharlotteDunois\Yasmin\Models\Permissions::ALL));
@@ -224,18 +221,18 @@ trait GuildChannelTrait {
         $overwrites = $this->overwritesFor($member);
         
         if($overwrites['everyone']) {
-            $permissions->add($overwrites['everyone']->allow->bitfield);
             $permissions->remove($overwrites['everyone']->deny->bitfield);
-        }
-        
-        if($overwrites['member']) {
-            $permissions->add($overwrites['member']->allow->bitfield);
-            $permissions->remove($overwrites['member']->deny->bitfield);
+            $permissions->add($overwrites['everyone']->allow->bitfield);
         }
         
         foreach($overwrites['roles'] as $role) {
-            $permissions->add($role->allow->bitfield);
             $permissions->remove($role->deny->bitfield);
+            $permissions->add($role->allow->bitfield);
+        }
+        
+        if($overwrites['member']) {
+            $permissions->remove($overwrites['member']->deny->bitfield);
+            $permissions->add($overwrites['member']->allow->bitfield);
         }
         
         return $permissions;
@@ -244,13 +241,13 @@ trait GuildChannelTrait {
     /**
      * Returns the permissions overwrites for the given member as an associative array.
      *
-     * <pre>
+     * ```
      * array(
      *     'everyone' => \CharlotteDunois\Yasmin\Models\PermissionOverwrite|null,
      *     'member' => \CharlotteDunois\Yasmin\Models\PermissionOverwrite|null,
      *     'roles' => \CharlotteDunois\Yasmin\Models\PermissionOverwrite[]
      * )
-     * </pre>
+     * ```
      *
      * @param \CharlotteDunois\Yasmin\Models\GuildMember|string  $member
      * @return array

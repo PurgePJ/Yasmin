@@ -72,7 +72,7 @@ interface ClientEvents {
      * Ratelimit information.
      *
      * The array has the following format:
-     * <pre>
+     * ```
      * array(
      *     'endpoint' => string,
      *     'global' => bool,
@@ -80,7 +80,7 @@ interface ClientEvents {
      *     'remaining => int,
      *     'resetTime' => int|null
      * )
-     * </pre>
+     * ```
      */
     function ratelimit(array $data);
     
@@ -215,6 +215,11 @@ interface ClientEvents {
      * Emitted when someone starts typing in the channel.
      */
     function typingStart(\CharlotteDunois\Yasmin\Interfaces\TextChannelInterface $channel, \CharlotteDunois\Yasmin\Models\User $user);
+    
+    /**
+     * Emitted when someone stops typing in the channel.
+     */
+    function typingStop(\CharlotteDunois\Yasmin\Interfaces\TextChannelInterface $channel, \CharlotteDunois\Yasmin\Models\User $user);
     
     /**
      * Emitted when someone updates their user account (username/avatar/etc.).

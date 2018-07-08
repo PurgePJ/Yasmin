@@ -31,9 +31,16 @@ class TypingStart implements \CharlotteDunois\Yasmin\Interfaces\WSEventInterface
                 $user = \React\Promise\resolve($user);
             }
             
-            $user->done(function ($user) use ($channel, $data) {
-                $channel->_updateTyping($user, $data['timestamp']);
-                $this->client->emit('typingStart', $channel, $user);
+            $user->done(function (\CharlotteDunois\Yasmin\Models\User $user) use ($channel, $data) {
+                if(!empty($data['member']) && $channel->type === 'text' && !$channel->guild->members->has($user->id)) {
+                    $member = $data['member'];
+                    $member['user'] = $user->id;
+                    $member = \React\Promise\resolve($guild->_addMember($member, true));
+                }
+                
+                if($channel->_updateTyping($user, $data['timestamp'])) {
+                    $this->client->emit('typingStart', $channel, $user);
+                }
             }, array($this->client, 'handlePromiseRejection'));
         }
     }

@@ -13,6 +13,16 @@ namespace CharlotteDunois\Yasmin\Models;
  * Presence Storage, which utilizes Collection.
  */
 class PresenceStorage extends Storage {
+    protected $enabled;
+    
+    /**
+     * @internal
+     */
+    function __construct(\CharlotteDunois\Yasmin\Client $client, ?array $data = null) {
+        parent::__construct($client, $data);
+        $this->enabled = (bool) $this->client->getOption('presenceCache', true);
+    }
+    
     /**
      * Resolves given data to a presence.
      * @param \CharlotteDunois\Yasmin\Models\Presence|\CharlotteDunois\Yasmin\Models\User|int|string  $presence  int/string = user ID
@@ -45,9 +55,13 @@ class PresenceStorage extends Storage {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      */
     function set($key, $value) {
+        if(!$this->enabled) {
+            return $this;
+        }
+        
         parent::set($key, $value);
         if($this !== $this->client->presences) {
             $this->client->presences->set($key, $value);
@@ -57,7 +71,7 @@ class PresenceStorage extends Storage {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      */
     function delete($key) {
         parent::delete($key);

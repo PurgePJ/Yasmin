@@ -67,7 +67,7 @@ class User extends ClientBase {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      *
      * @throws \RuntimeException
      * @internal

@@ -44,7 +44,7 @@ class PermissionOverwrite extends ClientBase {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      *
      * @throws \RuntimeException
      * @internal
@@ -122,7 +122,7 @@ class PermissionOverwrite extends ClientBase {
     /**
      * @internal
      */
-    function JsonSerialize() {
+    function jsonSerialize() {
         return array(
             'type' => $this->type,
             'id' => $this->id,

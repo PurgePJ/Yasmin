@@ -67,10 +67,16 @@ class APIManager {
     protected $queue = array();
     
     /**
-     * Running buckets we are waiting for a response.
+     * The class name of the bucket to use.
+     * @var string
+     */
+    protected $bucketName;
+    
+    /**
+     * Pending promises of buckets setting the ratelimit.
      * @var array
      */
-    protected $runningBuckets = array();
+    protected $bucketRatelimitPromises = array();
     
     /**
      * DO NOT initialize this class yourself.
@@ -81,6 +87,8 @@ class APIManager {
         $this->endpoints = new \CharlotteDunois\Yasmin\HTTP\APIEndpoints($this);
         
         $this->loop = $this->client->getLoop();
+        
+        $this->bucketName = $client->getOption('http.ratelimitbucket.name', '\\CharlotteDunois\\Yasmin\\HTTP\\RatelimitBucket');
     }
     
     function __destruct() {
@@ -264,15 +272,15 @@ class APIManager {
     
     /**
      * Processes a queue item.
-     * @param \CharlotteDunois\Yasmin\HTTP\APIRequest|\CharlotteDunois\Yasmin\HTTP\RatelimitBucket|null  $item
+     * @param \CharlotteDunois\Yasmin\HTTP\APIRequest|\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface|null  $item
      */
     protected function processItem($item) {
-        if($item instanceof \CharlotteDunois\Yasmin\HTTP\RatelimitBucket) {
-            if(\in_array($item->getEndpoint(), $this->runningBuckets)) {
+        if($item instanceof \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface) {
+            if($item->isBusy()) {
                 $this->queue[] = $item;
                 
                 foreach($this->queue as $qitem) {
-                    if(!($qitem instanceof \CharlotteDunois\Yasmin\HTTP\RatelimitBucket) || !\in_array($qitem->getEndpoint(), $this->runningBuckets)) {
+                    if(!($qitem instanceof \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface) || !$qitem->isBusy()) {
                         $this->processItem($qitem);
                         return;
                     }
@@ -281,34 +289,72 @@ class APIManager {
                 return;
             }
             
-            $item = $this->extractFromBucket($item);
+            $item->setBusy(true);
+            $buckItem = $this->extractFromBucket($item);
+            
+            if(!($buckItem instanceof \React\Promise\ExtendedPromiseInterface)) {
+                $buckItem = \React\Promise\resolve($buckItem);
+            }
+            
+            $buckItem->done(function ($req) use ($item) {
+                $item->setBusy(false);
+                
+                if(!($req instanceof \CharlotteDunois\Yasmin\HTTP\APIRequest)) {
+                    return;
+                }
+                
+                $this->execute($req);
+            }, array($this->client, 'handlePromiseRejection'));
+        } else {
+            if(!($item instanceof \CharlotteDunois\Yasmin\HTTP\APIRequest)) {
+                return;
+            }
+            
+            $this->execute($item);
         }
-        
-        if(!($item instanceof \CharlotteDunois\Yasmin\HTTP\APIRequest)) {
-            return;
-        }
-        
-        $this->execute($item);
     }
     
     /**
      * Extracts an item from a ratelimit bucket.
-     * @param \CharlotteDunois\Yasmin\HTTP\RatelimitBucket  $item
-     * @return \CharlotteDunois\Yasmin\HTTP\APIRequest|bool
+     * @param \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface  $item
+     * @return \CharlotteDunois\Yasmin\HTTP\APIRequest|bool|\React\Promise\ExtendedPromiseInterface
      */
-    protected function extractFromBucket(\CharlotteDunois\Yasmin\HTTP\RatelimitBucket $item) {
+    protected function extractFromBucket(\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface $item) {
         if($item->size() > 0) {
-            if($item->limited() === false) {
-                $this->client->emit('debug', 'Retrieved item from bucket "'.$item->getEndpoint().'"');
-                return $item->shift();
-            }
+            $meta = $item->getMeta();
             
-            $this->queue[] = $item;
+            if($meta instanceof \React\Promise\ExtendedPromiseInterface) {
+                return $meta->then(function ($data) use (&$item) {
+                    if($data['limited'] === false) {
+                        $this->client->emit('debug', 'Retrieved item from bucket "'.$item->getEndpoint().'"');
+                        return $item->shift();
+                    }
+                    
+                    $this->queue[] = $item;
+                    
+                    $this->client->addTimer(($data['resetTime'] + 1 - \time()), function () {
+                        $this->process();
+                    });
+                }, function ($error) use (&$item) {
+                    $this->queue[] = $item;
+                    $this->client->emit('error', $error);
+                    
+                    $this->process();
+                    return false;
+                });
+            } else {
+                if($meta['limited'] === false) {
+                    $this->client->emit('debug', 'Retrieved item from bucket "'.$item->getEndpoint().'"');
+                    return $item->shift();
+                }
+                
+                $this->queue[] = $item;
+                
+                $this->client->addTimer(($meta['resetTime'] + 1 - \time()), function () {
+                    $this->process();
+                });
+            }
         }
-        
-        $this->client->addTimer(($item->getResetTime() + 1 - \time()), function () {
-            $this->process();
-        });
         
         return false;
     }
@@ -323,7 +369,7 @@ class APIManager {
         
         if(!empty($endpoint)) {
             $ratelimit = $this->getRatelimitBucket($endpoint);
-            $this->runningBuckets[] = $ratelimit->getEndpoint();
+            $ratelimit->setBusy(true);
         }
         
         $this->client->emit('debug', 'Executing item "'.$item->getEndpoint().'"');
@@ -338,13 +384,20 @@ class APIManager {
             $item->deferred->reject($error);
         })->otherwise(function ($error) {
             $this->client->handlePromiseRejection($error);
-        })->then(function () use ($ratelimit) {
-            $key = \array_search($ratelimit->getEndpoint(), $this->runningBuckets);
-            if($key !== false) {
-                unset($this->runningBuckets[$key]);
+        })->then(function () use ($ratelimit, $endpoint) {
+            if($ratelimit instanceof \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface) {
+                if(isset($this->bucketRatelimitPromises[$endpoint])) {
+                    $this->bucketRatelimitPromises[$endpoint]->done(function () use ($ratelimit) {
+                        $ratelimit->setBusy(false);
+                        $this->processDelayed();
+                    });
+                } else {
+                    $ratelimit->setBusy(false);
+                    $this->processDelayed();
+                }
+            } else {
+                $this->processDelayed();
             }
-            
-            $this->processDelayed();
         });
     }
     
@@ -375,11 +428,12 @@ class APIManager {
     /**
      * Gets the ratelimit bucket for the specific endpoint.
      * @param string $endpoint
-     * @return \CharlotteDunois\Yasmin\HTTP\RatelimitBucket
+     * @return \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface
      */
     final protected function getRatelimitBucket(string $endpoint) {
         if(empty($this->ratelimits[$endpoint])) {
-            $this->ratelimits[$endpoint] = new \CharlotteDunois\Yasmin\HTTP\RatelimitBucket($this, $endpoint);
+            $bucket = $this->bucketName;
+            $this->ratelimits[$endpoint] = new $bucket($this, $endpoint);
         }
         
         return $this->ratelimits[$endpoint];
@@ -400,10 +454,10 @@ class APIManager {
     
     /**
      * Handles ratelimits.
-     * @param \GuzzleHttp\Psr7\Response                          $response
-     * @param \CharlotteDunois\Yasmin\HTTP\RatelimitBucket|null  $ratelimit
+     * @param \GuzzleHttp\Psr7\Response                                         $response
+     * @param \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface|null  $ratelimit
      */
-    function handleRatelimit(\GuzzleHttp\Psr7\Response $response, ?\CharlotteDunois\Yasmin\HTTP\RatelimitBucket $ratelimit = null) {
+    function handleRatelimit(\GuzzleHttp\Psr7\Response $response, ?\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface $ratelimit = null) {
         \extract($this->extractRatelimit($response));
         
         $global = false;
@@ -421,7 +475,10 @@ class APIManager {
                 $this->limited = false;
             }
         } elseif($ratelimit !== null) {
-            $ratelimit->handleRatelimit($limit, $remaining, $resetTime);
+            $set = $ratelimit->handleRatelimit($limit, $remaining, $resetTime);
+            if($set instanceof \React\Promise\ExtendedPromiseInterface) {
+                $this->bucketRatelimitPromises[$ratelimit->getEndpoint()] = $set;
+            }
         }
         
         $this->client->emit('ratelimit', array(

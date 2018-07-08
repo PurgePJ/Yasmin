@@ -185,17 +185,20 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     /**
      * What do you expect this to do? It makes a new Client instance. Available client options are as following (all are optional, except for token):
      *
-     * <pre>
+     * ```
      * array(
      *   'disableClones' => bool|string[], (disables cloning of class instances (for perfomance), affects update events - bool: true - disables all cloning)
      *   'disableEveryone' => bool, (disables the everyone and here mentions and replaces them with plaintext, defaults to true)
      *   'fetchAllMembers' => bool, (fetches all guild members, this should be avoided - necessary members get automatically fetched)
+     *   'messageCache' => bool, (enables message cache, defaults to true)
      *   'messageCacheLifetime' => int, (invalidates messages in the store older than the specified duration)
      *   'messageSweepInterval' => int, (interval when the message cache gets invalidated (see messageCacheLifetime), defaults to messageCacheLifetime)
+     *   'presenceCache' => bool, (enables presence cache, defaults to true)
      *   'shardID' => int, (shard ID, 0-indexed, always needs to be smaller than shardCount, important for sharding)
      *   'shardCount' => int, (shard count, important for sharding)
      *   'token' => string, (the bot token, required)
      *   'userSweepInterval' => int, (interval when the user cache gets invalidated (users sharing no mutual guilds get removed), defaults to 600)
+     *   'http.ratelimitbucket.name' => string, (class name of the custom ratelimit bucket, has to implement the interface)
      *   'http.restTimeOffset' => int|float, (specifies how many seconds should be waited after one REST request before the next REST request should be done)
      *   'ws.compression' => string, (Enables a specific one, defaults to zlib-stream, which is currently the only available compression)
      *   'ws.encoding' => string, (use a specific websocket encoding, JSON or ETF (if suggested package installed), recommended is JSON for now)
@@ -203,7 +206,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
      *   'ws.largeThreshold' => int, (50-250, members threshold after which guilds gets counted as large, defaults to 250)
      *   'ws.presence' => array (the presence to send on WS connect, see https://discordapp.com/developers/docs/topics/gateway#gateway-status-update)
      * )
-     * </pre>
+     * ```
      *
      * @param \React\EventLoop\LoopInterface|null  $loop     You can pass an event loop to the class, or it will automatically create one (you still need to make it run yourself).
      * @param array                                $options  Any client options.
@@ -236,14 +239,6 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
         
         // ONLY use this if you know to 100% the consequences and know what you are doing
         if(!empty($options['internal.api.instance'])) {
-            if(\is_string($options['internal.api.instance']) && !\class_exists($options['internal.api.instance'], true)) {
-                throw new \RuntimeException('Custom API Manager class does not exist');
-            }
-            
-            if(!\in_array('CharlotteDunois\\Yasmin\\HTTP\\APIManager', \class_parents($options['internal.api.instance']))) {
-                throw new \RuntimeException('Custom API Manager does not extend Yasmin API Manager');
-            }
-            
             if(\is_string($options['internal.api.instance'])) {
                 $api = $options['internal.api.instance'];
                 $this->api = new $api($this);
@@ -258,14 +253,6 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
         if(($options['internal.ws.disable'] ?? false) !== true) {
             // ONLY use this if you know to 100% the consequences and know what you are doing
             if(!empty($options['internal.ws.instance'])) {
-                if(\is_string($options['internal.ws.instance']) && !\class_exists($options['internal.ws.instance'], true)) {
-                    throw new \RuntimeException('Custom WS Manager class does not exist');
-                }
-                
-                if(!\in_array('CharlotteDunois\\Yasmin\\WebSocket\\WSManager', \class_parents($options['internal.ws.instance']))) {
-                    throw new \RuntimeException('Custom WS Manager does not extend Yasmin WS Manager');
-                }
-                
                 if(\is_string($options['internal.ws.instance'])) {
                     $ws = $options['internal.ws.instance'];
                     $this->ws = new $ws($this);
@@ -508,7 +495,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     /**
      * Creates a new guild. Resolves with an instance of Guild. Options is as following, everything is optional unless specified:
      *
-     * <pre>
+     * ```
      * array(
      *   'name' => string, (required)
      *   'region' => \CharlotteDunois\Yasmin\Models\VoiceRegion|string, (required)
@@ -542,7 +529,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
      *     ***   'deny' => \CharlotteDunois\Yasmin\Models\Permissions|int
      *     *** )
      * )
-     * </pre>
+     * ```
      *
      * @param array  $options
      * @return \React\Promise\ExtendedPromiseInterface
@@ -705,7 +692,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
      * @see \CharlotteDunois\Yasmin\Models\User
      */
     function fetchUser(int $userid) {
-        return (new \React\Promise\Promise(function (callable $resolve, $reject) use  ($userid) {
+        return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use  ($userid) {
             if($this->users->has($userid)) {
                 return $resolve($this->users->get($userid));
             }
@@ -848,7 +835,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Registers an Util, if it has a setLoop method. All methods used need to be static.
-     * It will set the event loop through <code>setLoop</code> and on destroy will call <code>destroy</code>.
+     * It will set the event loop through `setLoop` and on destroy will call `destroy`.
      * @param string $name
      */
     function registerUtil(string $name) {
@@ -859,7 +846,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     }
     
     /**
-     * Destroys an Util and calls <code>destroy</code> (requires that it is registered as such).
+     * Destroys an Util and calls `destroy` (requires that it is registered as such).
      * @param string $name
      */
     function destroyUtil(string $name) {
@@ -913,7 +900,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Validates the passed client options.
-     * @param array
+     * @param array  $options
      * @throws \InvalidArgumentException
      */
     protected function validateClientOptions(array $options) {
@@ -921,26 +908,31 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
             'disableClones' => 'boolean|array:string',
             'disableEveryone' => 'boolean',
             'fetchAllMembers' => 'boolean',
+            'messageCache' => 'boolean',
             'messageCacheLifetime' => 'integer|min:0',
             'messageSweepInterval' => 'integer|min:0',
+            'presenceCache' => 'boolean',
             'shardID' => 'integer|min:0',
             'shardCount' => 'integer|min:1',
             'token' => 'required|string|nowhitespace',
             'userSweepInterval' => 'integer|min:0',
+            'http.ratelimitbucket.name' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\RatelimitBucketInterface,string_only',
             'http.restTimeOffset' => 'integer',
             'ws.compression' => 'string',
             'ws.disabledEvents' => 'array:string',
             'ws.encoding' => 'string',
             'ws.largeThreshold' => 'integer|min:50|max:250',
             'ws.presence' => 'array',
-            'internal.storages.channels' => 'string',
-            'internal.storages.emojis' => 'string',
-            'internal.storages.guilds' => 'string',
-            'internal.storages.messages' => 'string',
-            'internal.storages.members' => 'string',
-            'internal.storages.presences' => 'string',
-            'internal.storages.roles' => 'string',
-            'internal.storages.users' => 'string'
+            'internal.api.instance' => 'class:CharlotteDunois\\Yasmin\\HTTP\\APIManager',
+            'internal.storages.channels' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.emojis' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.guilds' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.messages' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.members' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.presences' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.roles' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.storages.users' => 'class:CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface,string_only',
+            'internal.ws.instance' => 'class:CharlotteDunois\\Yasmin\\WebSocket\\WSManager'
         ));
         
         if($validator->fails()) {
@@ -970,15 +962,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
         );
         
         foreach($storages as $name => $base) {
-            if(!empty($this->options['internal.storages.'.$name])) {
-                if(!\class_exists($this->options['internal.storages.'.$name], true)) {
-                    throw new \RuntimeException('Custom Storage class for "'.$name.'" does not exist');
-                }
-                
-                if(!\in_array('CharlotteDunois\\Yasmin\\Interfaces\\StorageInterface', \class_implements($this->options['internal.storages.'.$name]))) {
-                    throw new \RuntimeException('Custom Storage class for "'.$name.'" does not implement StorageInterface');
-                }
-            } else {
+            if(empty($this->options['internal.storages.'.$name])) {
                 $this->options['internal.storages.'.$name] = $base;
             }
         }

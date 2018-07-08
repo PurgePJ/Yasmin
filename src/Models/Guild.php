@@ -20,6 +20,7 @@ namespace CharlotteDunois\Yasmin\Models;
  * @property string|null                                                    $splash                       The guild splash hash, or null.
  * @property int                                                            $ownerID                      The ID of the owner.
  * @property bool                                                           $large                        Whether the guild is considered large.
+ * @property bool|null                                                      $lazy                         Whether this guild is run in lazy mode (on the Discord node), or null.
  * @property int                                                            $memberCount                  How many members the guild has.
  * @property \CharlotteDunois\Yasmin\Models\ChannelStorage                  $channels                     Holds a guild's channels, mapped by their ID.
  * @property \CharlotteDunois\Yasmin\Models\EmojiStorage                    $emojis                       Holds a guild's emojis, mapped by their ID.
@@ -111,6 +112,7 @@ class Guild extends ClientBase {
     protected $splash;
     protected $ownerID;
     protected $large;
+    protected $lazy;
     protected $memberCount = 0;
     
     protected $defaultMessageNotifications;
@@ -162,7 +164,7 @@ class Guild extends ClientBase {
     }
     
     /**
-     * @inheritDoc
+     * {@inheritdoc}
      *
      * @throws \RuntimeException
      * @internal
@@ -220,14 +222,14 @@ class Guild extends ClientBase {
      *
      * Options are as following (all fields are optional):
      *
-     * <pre>
+     * ```
      * array(
      *   'nick' => string, (the nickname for the user, requires MANAGE_NICKNAMES permissions)
      *   'roles' => array|\CharlotteDunois\Yasmin\Utils\Collection, (array or Collection of Role instances or role IDs, requires MANAGE_ROLES permission)
      *   'mute' => bool, (whether the user is muted, requires MUTE_MEMBERS permission)
      *   'deaf' => bool, (whether the user is deafened, requires DEAFEN_MEMBERS permission)
      * )
-     * </pre>
+     * ```
      *
      * @param \CharlotteDunois\Yasmin\Models\User|int   $user         A guild member or User instance, or the user ID.
      * @param string                                    $accessToken  The OAuth Access Token for the given user.
@@ -300,7 +302,7 @@ class Guild extends ClientBase {
      *
      * Options are as following (all fields except name are optional):
      *
-     * <pre>
+     * ```
      * array(
      *   'name' => string,
      *   'type' => 'category'|'text'|'voice', (defaults to 'text')
@@ -318,7 +320,7 @@ class Guild extends ClientBase {
      *   *      'allow' => \CharlotteDunois\Yasmin\Models\Permissions|int,
      *   *      'deny' => \CharlotteDunois\Yasmin\Models\Permissions|int
      *   *  )
-     * </pre>
+     * ```
      *
      * @param array   $options
      * @param string  $reason
@@ -415,7 +417,7 @@ class Guild extends ClientBase {
      *
      * Options are as following (all are optional):
      *
-     * <pre>
+     * ```
      * array(
      *   'name' => string,
      *   'permissions' => int|\CharlotteDunois\Yasmin\Models\Permissions,
@@ -423,7 +425,7 @@ class Guild extends ClientBase {
      *   'hoist' => bool,
      *   'mentionable' => bool
      * )
-     * </pre>
+     * ```
      *
      * @param array   $options
      * @param string  $reason
@@ -461,7 +463,7 @@ class Guild extends ClientBase {
      *
      * Options are as following (at least one is required):
      *
-     * <pre>
+     * ```
      * array(
      *   'name' => string,
      *   'region' => string,
@@ -476,7 +478,7 @@ class Guild extends ClientBase {
      *   'splash' => string, (file path or URL, or data)
      *   'region' => string|\CharlotteDunois\Yasmin\Models\VoiceRegion
      * )
-     * </pre>
+     * ```
      *
      * @param array   $options
      * @param string  $reason
@@ -556,7 +558,7 @@ class Guild extends ClientBase {
      *
      * Options are as following (all are optional):
      *
-     * <pre>
+     * ```
      * array(
      *   'before' => \CharlotteDunois\Yasmin\Models\AuditLogEntry|int, (int = Audit Log Entry ID)
      *   'after' => \CharlotteDunois\Yasmin\Models\AuditLogEntry|int, (int = Audit Log Entry ID)
@@ -564,7 +566,7 @@ class Guild extends ClientBase {
      *   'user' => \CharlotteDunois\Yasmin\Models\User|int, (int = User ID)
      *   'type' => string|int
      * )
-     * </pre>
+     * ```
      *
      * @param array  $options
      * @return \React\Promise\ExtendedPromiseInterface
@@ -659,7 +661,7 @@ class Guild extends ClientBase {
             $received = 0;
             $timers = array();
             
-            $listener = function ($guild, $members) use(&$listener, $query, $limit, &$received, &$timers, $resolve) {
+            $listener = function ($guild, $members) use (&$listener, $query, $limit, &$received, &$timers, $resolve) {
                 if($guild->id !== $this->id) {
                     return;
                 }
@@ -667,25 +669,25 @@ class Guild extends ClientBase {
                 $received += $members->count();
                 
                 if((!empty($query) && $members->count() < 1000) || ($limit > 0 && $received >= $limit) || $this->members->count() === $this->memberCount) {
-                    $this->client->removeListener('guildMembersChunk', $listener);
-                    $resolve($this);
-                    
                     if(!empty($timers)) {
                         foreach($timers as $timer) {
                             $this->client->cancelTimer($timer);
                         }
                     }
+                    
+                    $this->client->removeListener('guildMembersChunk', $listener);
+                    $resolve($this);
                 }
             };
             
             if(!empty($query)) {
                 $timers[] = $this->client->addTimer(110, function (&$listener, &$timers, $resolve) {
-                    $this->client->removeListener('guildMembersChunk', $listener);
-                    $resolve($this);
-                    
                     foreach($timers as $timer) {
                         $this->client->cancelTimer($timer);
                     }
+                    
+                    $this->client->removeListener('guildMembersChunk', $listener);
+                    $resolve($this);
                 });
             }
             
@@ -701,13 +703,13 @@ class Guild extends ClientBase {
             ));
             
             $timers[] = $this->client->addTimer(120, function () use (&$listener, &$timers, $reject) {
+                foreach($timers as $timer) {
+                    $this->client->cancelTimer($timer);
+                }
+                
                 if($this->members->count() < $this->memberCount) {
                     $this->client->removeListener('guildMembersChunk', $listener);
                     $reject(new \Exception('Members did not arrive in time'));
-                }
-                
-                foreach($timers as $timer) {
-                    $this->client->cancelTimer($timer);
                 }
             });
         }));
@@ -854,7 +856,7 @@ class Guild extends ClientBase {
     }
     
     /**
-     * Batch-updates the guild's channels positions. Channels is an array of <code>channel ID (string)|GuildChannelInterface => position (int)</code> pairs. Resolves with $this.
+     * Batch-updates the guild's channels positions. Channels is an array of `channel ID (string)|GuildChannelInterface => position (int)` pairs. Resolves with $this.
      * @param array   $channels
      * @param string  $reason
      * @return \React\Promise\ExtendedPromiseInterface
@@ -878,7 +880,7 @@ class Guild extends ClientBase {
     }
     
     /**
-     * Batch-updates the guild's roles positions. Roles is an array of <code>role ID (int)|Role => position (int)</code> pairs. Resolves with $this.
+     * Batch-updates the guild's roles positions. Roles is an array of `role ID (int)|Role => position (int)` pairs. Resolves with $this.
      * @param array   $roles
      * @param string  $reason
      * @return \React\Promise\ExtendedPromiseInterface
@@ -1046,6 +1048,7 @@ class Guild extends ClientBase {
         $this->splash = $guild['splash'];
         $this->ownerID = (int) $guild['owner_id'];
         $this->large = (bool) ($guild['large'] ?? $this->large);
+        $this->lazy = (isset($guild['lazy']) ? ((bool) $guild['lazy']) : null);
         $this->memberCount = $guild['member_count']  ?? $this->memberCount;
         
         $this->defaultMessageNotifications = self::DEFAULT_MESSAGE_NOTIFICATIONS[$guild['default_message_notifications']] ?? $this->defaultMessageNotifications;
