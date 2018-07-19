@@ -92,29 +92,31 @@ class URLHelpers {
     }
     
     /**
-     * Makes an asynchronous request. Resolves with an instance of Response.
-     * @param \GuzzleHttp\Psr7\Request  $request
-     * @param array|null                $requestOptions
-     * @return \GuzzleHttp\Promise\Promise
-     * @see \GuzzleHttp\Psr7\Response
+     * Makes an asynchronous request. Resolves with an instance of ResponseInterface.
+     * @param \Psr\Http\Message\RequestInterface  $request
+     * @param array|null                          $requestOptions
+     * @return \React\Promise\ExtendedPromiseInterface
+     * @see \Psr\Http\Message\ResponseInterface
      */
-    static function makeRequest(\GuzzleHttp\Psr7\Request $request, ?array $requestOptions = null) {
+    static function makeRequest(\Psr\Http\Message\RequestInterface $request, ?array $requestOptions = null) {
         if(!self::$http) {
             self::setHTTPClient();
         }
         
         self::setTimer();
         
-        return self::$http->sendAsync($request, ($requestOptions ?? array()));
+        return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use (&$request, &$requestOptions) {
+            self::$http->sendAsync($request, ($requestOptions ?? array()))->then($resolve, $reject);
+        }));
     }
     
     /**
      * Makes a synchronous request.
-     * @param \GuzzleHttp\Psr7\Request  $request
-     * @param array|null                $requestOptions
-     * @return \GuzzleHttp\Psr7\Response
+     * @param \Psr\Http\Message\RequestInterface  $request
+     * @param array|null                          $requestOptions
+     * @return \Psr\Http\Message\ResponseInterface
      */
-    static function makeRequestSync(\GuzzleHttp\Psr7\Request $request, ?array $requestOptions = null) {
+    static function makeRequestSync(\Psr\Http\Message\RequestInterface $request, ?array $requestOptions = null) {
         if(!self::$http) {
             self::setHTTPClient();
         }
@@ -153,7 +155,8 @@ class URLHelpers {
             $request = new \GuzzleHttp\Psr7\Request('GET', $url, $requestHeaders);
             
             self::$http->sendAsync($request)->then(function ($response) use ($resolve) {
-                $resolve((string) $response->getBody());
+                $body = (string) $response->getBody();
+                $resolve($body);
             }, $reject);
         }));
     }

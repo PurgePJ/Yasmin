@@ -40,6 +40,11 @@ final class APIRequest {
     private $endpoint;
     
     /**
+     * @var int
+     */
+    protected $retries = 0;
+    
+    /**
      * @var array
      */
     private $options = array();
@@ -80,7 +85,7 @@ final class APIRequest {
     
     /**
      * Returns the Guzzle Request.
-     * @return \GuzzleHttp\Psr7\Request
+     * @return \Psr\Http\Message\RequestInterface
      */
     function request() {
         $url = $this->url.$this->endpoint;
@@ -143,7 +148,7 @@ final class APIRequest {
     /**
      * Executes the request.
      * @param \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface|null  $ratelimit
-     * @return \GuzzleHttp\Promise\Promise
+     * @return \React\Promise\ExtendedPromiseInterface
      */
     function execute(?\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface $ratelimit = null) {
         $request = $this->request();
@@ -187,15 +192,12 @@ final class APIRequest {
     
     /**
      * Gets the response body from the response.
-     * @param \GuzzleHttp\Psr7\Response  $response
+     * @param \Psr\Http\Message\ResponseInterface  $response
      * @return mixed
      * @throws \RuntimeException
      */
-    static function decodeBody(\GuzzleHttp\Psr7\Response $response) {
-        $body = $response->getBody();
-        if($body instanceof \GuzzleHttp\Psr7\Stream) {
-            $body = $body->getContents();
-        }
+    static function decodeBody(\Psr\Http\Message\ResponseInterface $response) {
+        $body = (string) $response->getBody();
         
         $type = $response->getHeader('Content-Type')[0];
         if(\stripos($type, 'text/html') !== false) {
@@ -212,15 +214,41 @@ final class APIRequest {
     
     /**
      * Handles an API error.
-     * @param \GuzzleHttp\Psr7\Response                                         $response
+     * @param \Psr\Http\Message\ResponseInterface                               $response
      * @param mixed                                                             $body
      * @param \CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface|null  $ratelimit
      * @return \CharlotteDunois\Yasmin\HTTP\DiscordAPIException|\RuntimeException|null
      */
-    protected function handleAPIError(\GuzzleHttp\Psr7\Response $response, $body, ?\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface $ratelimit = null) {
+    protected function handleAPIError(\Psr\Http\Message\ResponseInterface $response, $body, ?\CharlotteDunois\Yasmin\Interfaces\RatelimitBucketInterface $ratelimit = null) {
         $status = $response->getStatusCode();
         
-        if($status === 429 || $status >= 500) {
+        if($status >= 500) {
+            $this->retries++;
+            $maxRetries = (int) $this->api->client->getOption('http.requestMaxRetries', 0);
+            
+            if($maxRetries > 0 && $this->retries > $maxRetries) {
+                $this->api->client->emit('debug', 'Giving up on item "'.$this->endpoint.'" after '.$maxRetries.' retries due to HTTP '.$status);
+                
+                return (new \RuntimeException('Maximum retry of '.$maxRetries.' reached - giving up'));
+            }
+            
+            $this->api->client->emit('debug', 'Delaying unshifting item "'.$this->endpoint.'" due to HTTP '.$status);
+            
+            $delay = (int) $this->api->client->getOption('http.requestErrorDelay', 30);
+            if($this->retries > 2) {
+                $delay *= 2;
+            }
+            
+            $this->api->client->addTimer($delay, function () use (&$ratelimit) {
+                if($ratelimit !== null) {
+                    $this->api->unshiftQueue($ratelimit->unshift($this));
+                } else {
+                    $this->api->unshiftQueue($this);
+                }
+            });
+            
+            return null;
+        } elseif($status === 429) {
             $this->api->client->emit('debug', 'Unshifting item "'.$this->endpoint.'" due to HTTP '.$status);
             
             if($ratelimit !== null) {
