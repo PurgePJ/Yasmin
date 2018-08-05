@@ -13,13 +13,15 @@ namespace CharlotteDunois\Yasmin\WebSocket;
  * Handles WS messages.
  *
  * @property \CharlotteDunois\Yasmin\Client               $client
- * @property int                                          $previousSequence
- * @property int                                          $sequence
+ * @property float|null                                   $lastPacketTime
+ * @property int|null                                     $previousSequence
+ * @property int|null                                     $sequence
  * @property \CharlotteDunois\Yasmin\WebSocket\WSManager  $wsmanager
  * @internal
  */
 class WSHandler {
     private $handlers = array();
+    private $lastPacketTime = null;
     private $previousSequence = null;
     private $sequence = null;
     private $wsmanager;
@@ -43,6 +45,9 @@ class WSHandler {
         switch($name) {
             case 'client':
                 return $this->wsmanager->client;
+            break;
+            case 'lastPacketTime':
+                return $this->lastPacketTime;
             break;
             case 'previousSequence':
                 return $this->previousSequence;
@@ -75,22 +80,20 @@ class WSHandler {
      * @return void
      */
     function handle($message) {
-        try {
-            $packet = $this->wsmanager->encoding->decode($message);
-            $this->client->emit('raw', $packet);
-            
-            if(isset($packet['s'])) {
-                $this->previousSequence = $this->sequence;
-                $this->sequence = $packet['s'];
-            }
-            
-            $this->wsmanager->emit('debug', 'Received WS packet with OP code '.$packet['op']);
-            
-            if(isset($this->handlers[$packet['op']])) {
-                $this->handlers[$packet['op']]->handle($packet);
-            }
-        } catch (\Throwable | \Exception | \Error $e) {
-            $this->wsmanager->client->emit('error', $e);
+        $this->lastPacketTime = \microtime(true);
+        
+        $packet = $this->wsmanager->encoding->decode($message);
+        $this->client->emit('raw', $packet);
+        
+        if(isset($packet['s'])) {
+            $this->previousSequence = $this->sequence;
+            $this->sequence = $packet['s'];
+        }
+        
+        $this->wsmanager->emit('debug', 'Received WS packet with OP code '.$packet['op']);
+        
+        if(isset($this->handlers[$packet['op']])) {
+            $this->handlers[$packet['op']]->handle($packet);
         }
     }
     

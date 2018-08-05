@@ -203,13 +203,17 @@ class Message extends ClientBase {
      *
      * @param callable  $filter   The filter to only collect desired reactions.
      * @param array     $options  The collector options.
-     * @return \React\Promise\ExtendedPromiseInterface
+     * @return \React\Promise\ExtendedPromiseInterface  This promise is cancellable.
+     * @throws \RangeException          The exception the promise gets rejected with, if waiting times out.
+     * @throws \OutOfBoundsException    The exception the promise gets rejected with, if the promise gets cancelled.
      * @see \CharlotteDunois\Yasmin\Models\MessageReaction
      */
     function collectReactions(callable $filter, array $options = array()) {
-        return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use ($filter, $options) {
+        $listener = null;
+        $timer = null;
+        
+        return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use ($filter, $options, &$listener, &$timer) {
             $collect = new \CharlotteDunois\Yasmin\Utils\Collection();
-            $timer = null;
             
             $listener = function ($reaction) use (&$collect, $filter, &$listener, $options, $resolve, &$timer) {
                 if($this->id === $reaction->message->id && $filter($reaction)) {
@@ -237,6 +241,13 @@ class Message extends ClientBase {
             });
             
             $this->client->on('messageReactionAdd', $listener);
+        }, function (callable $resolve, callable $reject) use (&$listener, &$timer) {
+            if($timer !== null) {
+                $this->client->cancelTimer($timer);
+            }
+            
+            $this->client->removeListener('messageReactionAdd', $listener);
+            $reject(new \OutOfBoundsException('Operation cancelled'));
         }));
     }
     
@@ -417,13 +428,16 @@ class Message extends ClientBase {
             
             $reaction = new \CharlotteDunois\Yasmin\Models\MessageReaction($this->client, $this, $emoji, array(
                 'count' => 0,
-                'me' => (bool) ($this->client->user->id === $data['user_id']),
+                'me' => ((bool) ($this->client->user->id === $data['user_id'])),
                 'emoji' => $emoji
             ));
             
             $this->reactions->set($id, $reaction);
         } else {
-            $reaction->_patch(array('me' => ($this->client->user->id === $data['user_id'])));
+            $botReacted = (bool) ($this->client->user->id === $data['user_id']);
+            if($botReacted && !$reaction->me) {
+                $reaction->_patch(array('me' => true));
+            }
         }
         
         $reaction->_incrementCount();

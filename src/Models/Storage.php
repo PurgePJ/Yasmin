@@ -18,6 +18,12 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
     protected $client;
     
     /**
+     * Tells the storages to emit `internal.storage.set` and `internal.storage.delete` events.
+     * @var bool
+     */
+    public static $emitUpdates = false;
+    
+    /**
      * @internal
      */
     function __construct(\CharlotteDunois\Yasmin\Client $client, array $data = null) {
@@ -96,5 +102,27 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
         }
         
         $this->client = \CharlotteDunois\Yasmin\Models\ClientBase::$serializeClient;
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    function set($key, $value) {
+        parent::set($key, $value);
+        
+        if(static::$emitUpdates) {
+            $this->client->emit('internal.storage.set', $this, $key, $value);
+        }
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    function delete($key) {
+        parent::delete($key);
+        
+        if(static::$emitUpdates) {
+            $this->client->emit('internal.storage.delete', $this, $key);
+        }
     }
 }
