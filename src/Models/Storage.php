@@ -33,7 +33,7 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
     
     /**
      * {@inheritdoc}
-     *
+     * @return mixed
      * @throws \RuntimeException
      * @internal
      */
@@ -46,39 +46,7 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
     }
     
     /**
-     * @inheritDoc
-     */
-    function has($key) {
-        if(\is_array($key) || \is_object($key)) {
-            return false;
-        }
-        
-        return parent::has(((int) $key));
-    }
-    
-    /**
-     * @inheritDoc
-     */
-    function get($key) {
-        if(\is_array($key) || \is_object($key)) {
-            return null;
-        }
-        
-        return parent::get(((int) $key));
-    }
-    
-    /**
-     * @inheritDoc
-     */
-    function set($key, $val) {
-        if(\is_array($key) || \is_object($key)) {
-            throw new \InvalidArgumentException('Key can not be an array or object');
-        }
-        
-        return parent::set(((int) $key), $val);
-    }
-    
-    /**
+     * @return string
      * @internal
      */
     function serialize() {
@@ -89,6 +57,7 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
     }
     
     /**
+     * @return void
      * @internal
      */
     function unserialize($data) {
@@ -106,23 +75,69 @@ class Storage extends \CharlotteDunois\Yasmin\Utils\Collection
     
     /**
      * {@inheritdoc}
+     * @return bool
+     * @throws \InvalidArgumentException
+     */
+    function has($key) {
+        if(\is_array($key) || \is_object($key)) {
+            throw new \InvalidArgumentException('Key can not be an array or object');
+        }
+        
+        $key = (int) $key;
+        return parent::has($key);
+    }
+    
+    /**
+     * {@inheritdoc}
+     * @return mixed|null
+     * @throws \InvalidArgumentException
+     */
+    function get($key) {
+        if(\is_array($key) || \is_object($key)) {
+            throw new \InvalidArgumentException('Key can not be an array or object');
+        }
+        
+        $key = (int) $key;
+        return parent::get($key);
+    }
+    
+    /**
+     * {@inheritdoc}
+     * @return $this
+     * @throws \InvalidArgumentException
      */
     function set($key, $value) {
+        if(\is_array($key) || \is_object($key)) {
+            throw new \InvalidArgumentException('Key can not be an array or object');
+        }
+        
+        $key = (int) $key;
         parent::set($key, $value);
         
         if(static::$emitUpdates) {
             $this->client->emit('internal.storage.set', $this, $key, $value);
         }
+        
+        return $this;
     }
     
     /**
      * {@inheritdoc}
+     * @return $this
+     * @throws \InvalidArgumentException
      */
     function delete($key) {
+        if(\is_array($key) || \is_object($key)) {
+            throw new \InvalidArgumentException('Key can not be an array or object');
+        }
+        
+        $key = (int) $key;
         parent::delete($key);
         
         if(static::$emitUpdates) {
             $this->client->emit('internal.storage.delete', $this, $key);
         }
+        
+        return $this;
     }
 }

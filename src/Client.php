@@ -31,7 +31,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
      * The version of Yasmin.
      * @var string
      */
-    const VERSION = '0.4.1-dev';
+    const VERSION = '0.4.2-dev';
     
     /**
      * WS connection status: Disconnected.
@@ -283,6 +283,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     }
     
     /**
+     * @return bool
      * @throws \Exception
      * @internal
      */
@@ -299,6 +300,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     }
     
     /**
+     * @return mixed
      * @throws \RuntimeException
      * @internal
      */
@@ -332,6 +334,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     /**
      * Unserializes the class and re-registers utils. Automatically creates an event loop.
      * @param string $vars
+     * @return void
      * @throws \RuntimeException
      */
     function unserialize($vars) {
@@ -818,6 +821,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Cancels all timers.
+     * @return void
      */
     function cancelTimers() {
         foreach($this->timers as $key => $timer) {
@@ -828,6 +832,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Make an instance of {ClientUser} and store it.
+     * @return void
      * @internal
      */
     function setClientUser(array $user) {
@@ -847,6 +852,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
      * Registers an Util, if it has a setLoop method. All methods used need to be static.
      * It will set the event loop through `setLoop` and on destroy will call `destroy`.
      * @param string $name
+     * @return void
      */
     function registerUtil(string $name) {
         if(\method_exists($name, 'setLoop')) {
@@ -858,6 +864,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     /**
      * Destroys an Util and calls `destroy` (requires that it is registered as such).
      * @param string $name
+     * @return void
      */
     function destroyUtil(string $name) {
         $pos = \array_search($name, $this->utils, true);
@@ -872,6 +879,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Registers Utils which have a setLoop method.
+     * @return void
      * @internal
      */
     function registerUtils() {
@@ -890,6 +898,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Destroys or stops all timers from Utils (requires that they are registered as such).
+     * @return void
      * @internal
      */
     function destroyUtils() {
@@ -902,6 +911,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Emits an error for an unhandled promise rejection.
+     * @return void
      * @internal
      */
     function handlePromiseRejection($error) {
@@ -911,6 +921,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     /**
      * Validates the passed client options.
      * @param array  $options
+     * @return void
      * @throws \InvalidArgumentException
      */
     protected function validateClientOptions(array $options) {
@@ -959,6 +970,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     
     /**
      * Validates the passed client options storages.
+     * @return void
      * @throws \RuntimeException
      */
     protected function checkOptionsStorages() {

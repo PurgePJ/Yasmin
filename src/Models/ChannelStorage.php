@@ -61,6 +61,7 @@ class ChannelStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function set($key, $value) {
         parent::set($key, $value);
@@ -73,6 +74,7 @@ class ChannelStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function delete($key) {
         parent::delete($key);
@@ -85,6 +87,7 @@ class ChannelStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function clear() {
         if($this !== $this->client->channels) {
@@ -99,6 +102,7 @@ class ChannelStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Interfaces\ChannelInterface
      * @internal
      */
     function factory(array $data, ?\CharlotteDunois\Yasmin\Models\Guild $guild = null) {

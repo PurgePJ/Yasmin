@@ -14,10 +14,14 @@ namespace CharlotteDunois\Yasmin\WebSocket\Handlers;
  * @internal
  */
 class Hello implements \CharlotteDunois\Yasmin\Interfaces\WSHandlerInterface {
-    /** @var \React\EventLoop\TimerInterface|\React\EventLoop\Timer\TimerInterface */
+    /**
+     * @var \React\EventLoop\TimerInterface|\React\EventLoop\Timer\TimerInterface
+     */
     public $heartbeat = null;
     
-    /** @var \CharlotteDunois\Yasmin\WebSocket\WSHandler */
+    /**
+     * @var \CharlotteDunois\Yasmin\WebSocket\WSHandler
+     */
     protected $wshandler;
     
     function __construct(\CharlotteDunois\Yasmin\WebSocket\WSHandler $wshandler) {
@@ -28,7 +32,7 @@ class Hello implements \CharlotteDunois\Yasmin\Interfaces\WSHandlerInterface {
         });
     }
     
-    function handle($packet) {
+    function handle($packet): void {
         $this->wshandler->client->emit('debug', 'Connected to Gateway via '.\implode(', ', $packet['d']['_trace']));
         
         $interval = $packet['d']['heartbeat_interval'] / 1000;

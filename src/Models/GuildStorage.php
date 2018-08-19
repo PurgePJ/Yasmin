@@ -42,6 +42,7 @@ class GuildStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function delete($key) {
         $guild = $this->get($key);
@@ -65,6 +66,7 @@ class GuildStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Models\Guild
      * @internal
      */
     function factory(array $data) {

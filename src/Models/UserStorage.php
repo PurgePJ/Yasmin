@@ -55,6 +55,7 @@ class UserStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Models\User|null
      * @internal
      */
     function patch(array $user) {
@@ -80,6 +81,7 @@ class UserStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function set($key, $value) {
         parent::set($key, $value);
@@ -92,6 +94,7 @@ class UserStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function delete($key) {
         parent::delete($key);
@@ -103,6 +106,7 @@ class UserStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Models\User
      * @internal
      */
     function factory(array $data, bool $userFetched = false) {
@@ -130,9 +134,10 @@ class UserStorage extends Storage {
         $amount = 0;
         foreach($this->data as $key => $val) {
             if($val->id !== $this->client->user->id && !$val->userFetched && !\in_array($key, $members, true)) {
+                $this->client->presences->delete($key);
                 $this->delete($key);
-                unset($val);
                 
+                unset($val);
                 $amount++;
             }
         }

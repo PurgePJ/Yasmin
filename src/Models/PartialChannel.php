@@ -45,7 +45,7 @@ class PartialChannel extends ClientBase {
     
     /**
      * {@inheritdoc}
-     *
+     * @return mixed
      * @throws \RuntimeException
      * @internal
      */
@@ -83,6 +83,7 @@ class PartialChannel extends ClientBase {
     
     /**
      * Automatically converts to the channel name.
+     * @return string
      */
     function __toString() {
         return $this->name;

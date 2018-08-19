@@ -13,15 +13,48 @@ namespace CharlotteDunois\Yasmin\Utils;
  * Data Helper methods.
  */
 class DataHelpers {
-    private static $loop;
+    /**
+     * @var \React\EventLoop\LoopInterface
+     */
+    protected static $loop;
+    
+    /**
+     * @var \React\Filesystem\FilesystemInterface|null
+     */
+    private static $filesystem;
     
     /**
      * Sets the Event Loop.
      * @param \React\EventLoop\LoopInterface  $loop
+     * @return void
      * @internal
      */
     static function setLoop(\React\EventLoop\LoopInterface $loop) {
         self::$loop = $loop;
+        
+        if(self::$filesystem === null) {
+            $adapters = \React\Filesystem\Filesystem::getSupportedAdapters();
+            if(!empty($adapters)) {
+                self::$filesystem = \React\Filesystem\Filesystem::create($loop);
+            }
+        }
+    }
+    
+    /**
+     * Returns the stored React Filesystem instance, or null.
+     * @return \React\Filesystem\FilesystemInterface|null
+     */
+    static function getFilesystem() {
+        return self::$filesystem;
+    }
+    
+    /**
+     * Sets the React Filesystem instance.
+     * @param \React\Filesystem\FilesystemInterface  $filesystem
+     * @return void
+     */
+    static function setFilesystem(\React\Filesystem\FilesystemInterface $filesystem) {
+        self::$filesystem = $filesystem;
     }
     
     /**
@@ -79,14 +112,16 @@ class DataHelpers {
     static function resolveFileResolvable(string $file) {
         $rfile = @\realpath($file);
         if($rfile) {
-            $promise = \React\Promise\resolve(\file_get_contents($rfile));
+            if(self::$filesystem !== null) {
+                return self::$filesystem->getContents($file);
+            }
+            
+            return \React\Promise\resolve(\file_get_contents($rfile));
         } elseif(\filter_var($file, FILTER_VALIDATE_URL)) {
-            $promise = \CharlotteDunois\Yasmin\Utils\URLHelpers::resolveURLToData($file);
-        } else {
-            $promise = \React\Promise\resolve($file);
+            return \CharlotteDunois\Yasmin\Utils\URLHelpers::resolveURLToData($file);
         }
         
-        return $promise;
+        return \React\Promise\reject(new \RuntimeException('Given file is not resolvable'));
     }
     
     /**
@@ -264,6 +299,10 @@ class DataHelpers {
                     $promises[] = \CharlotteDunois\Yasmin\Utils\URLHelpers::resolveURLToData($file)->then(function ($data) use ($file) {
                         return array('name' => \basename($file), 'data' => $data);
                     });
+                } elseif(\realpath($file)) {
+                    $promises[] = self::resolveFileResolvable($file)->then(function ($data) use ($file) {
+                        return array('name' => \basename($file), 'data' => $data);
+                    });
                 } else {
                     $promises[] = \React\Promise\resolve(array('name' => 'file-'.\bin2hex(\random_bytes(3)).'.jpg', 'data' => $file));
                 }
@@ -287,11 +326,21 @@ class DataHelpers {
                 }
             }
             
-            if(isset($file['path']) && filter_var($file['path'], \FILTER_VALIDATE_URL)) {
-                $promises[] = \CharlotteDunois\Yasmin\Utils\URLHelpers::resolveURLToData($file['path'])->then(function ($data) use ($file) {
-                    $file['data'] = $data;
-                    return $file;
-                });
+            if(isset($file['path'])) {
+                if(filter_var($file['path'], \FILTER_VALIDATE_URL)) {
+                    $promises[] = \CharlotteDunois\Yasmin\Utils\URLHelpers::resolveURLToData($file['path'])->then(function ($data) use ($file) {
+                        $file['data'] = $data;
+                        return $file;
+                    });
+                } elseif(self::$filesystem !== null) {
+                    $promises[] = self::$filesystem->getContents($file['path'])->then(function ($data) use ($file) {
+                        $file['data'] = $data;
+                        return $file;
+                    });
+                } else {
+                    $file['data'] = \file_get_contents($file['path']);
+                    $promises[] = \React\Promise\resolve($file);
+                }
             } else {
                 $promises[] = \React\Promise\resolve($file);
             }

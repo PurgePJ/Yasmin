@@ -18,7 +18,7 @@ namespace CharlotteDunois\Yasmin\Models;
  * @property int|null                                  $channelID  The channel the webhook belongs to, or null.
  * @property int|null                                  $guildID    The guild the webhook belongs to, or null.
  * @property \CharlotteDunois\Yasmin\Models\User|null  $owner      The owner of the webhook, or null.
- * @property string                                    $token      The webhook token.
+ * @property string|null                               $token      The webhook token.
  */
 class Webhook extends ClientBase {
     protected $id;
@@ -31,7 +31,6 @@ class Webhook extends ClientBase {
     
     /**
      * @internal
-     * @internal
      */
     function __construct(\CharlotteDunois\Yasmin\Client $client, array $webhook) {
         parent::__construct($client);
@@ -42,6 +41,8 @@ class Webhook extends ClientBase {
     
     /**
      * {@inheritdoc}
+     * @return mixed
+     * @throws \RuntimeException
      * @internal
      */
     function __get($name) {
@@ -152,10 +153,15 @@ class Webhook extends ClientBase {
      * @param string  $content  The webhook message content.
      * @param array   $options  Any webhook message options.
      * @return \React\Promise\ExtendedPromiseInterface
+     * @throws \BadMethodCallException
      * @see \CharlotteDunois\Yasmin\Models\Message
      * @see https://discordapp.com/developers/docs/resources/channel#message-object
      */
     function send(string $content, array $options = array()) {
+        if(empty($this->token)) {
+            throw new \BadMethodCallException('Can not use webhook without token to send message');
+        }
+        
         return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use ($content, $options) {
             \CharlotteDunois\Yasmin\Utils\DataHelpers::resolveMessageOptionsFiles($options)->done(function ($files) use ($content, $options, $resolve, $reject) {
                 $msg = array(
@@ -256,6 +262,7 @@ class Webhook extends ClientBase {
     }
     
     /**
+     * @return void
      * @internal
      */
     function _patch(array $webhook) {
@@ -264,6 +271,6 @@ class Webhook extends ClientBase {
         $this->channelID = (!empty($webhook['channel_id']) ? ((int) $webhook['channel_id']) : null);
         $this->guildID = (!empty($webhook['guild_id']) ? ((int) $webhook['guild_id']) : null);
         $this->owner = (!empty($webhook['user']) ? $this->client->users->patch($webhook['user']) : null);
-        $this->token = $webhook['token'];
+        $this->token = $webhook['token'] ?? null;
     }
 }

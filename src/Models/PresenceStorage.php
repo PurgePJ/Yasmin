@@ -56,6 +56,7 @@ class PresenceStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function set($key, $value) {
         if(!$this->enabled) {
@@ -72,6 +73,7 @@ class PresenceStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function delete($key) {
         parent::delete($key);
@@ -83,6 +85,7 @@ class PresenceStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Models\Presence
      * @internal
      */
     function factory(array $data) {

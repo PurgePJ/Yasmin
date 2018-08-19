@@ -37,20 +37,26 @@ class Snowflake {
     /**
      * Constructor.
      * @param string|int  $snowflake
+     * @throws \InvalidArgumentException
      */
     function __construct($snowflake) {
         $snowflake = (int) $snowflake;
         $this->binary = \str_pad(\decbin($snowflake), 64, 0, \STR_PAD_LEFT);
-
+        
         $time = (string) ($snowflake >> 22);
-
+        
         $this->timestamp = (float) ((((int) \substr($time, 0, -3)) + self::EPOCH).'.'.\substr($time, -3));
         $this->workerID = ($snowflake & 0x3E0000) >> 17;
         $this->processID = ($snowflake & 0x1F000) >> 12;
         $this->increment = ($snowflake & 0xFFF);
+        
+        if($this->timestamp < self::EPOCH || $this->workerID < 0 || $this->workerID >= 32 || $this->processID < 0 || $this->processID >= 32 || $this->increment < 0 || $this->increment >= 4096) {
+            throw new \InvalidArgumentException('Invalid snow in snowflake');
+        }
     }
     
     /**
+     * @return mixed
      * @throws \Exception
      * @internal
      */
@@ -123,13 +129,5 @@ class Snowflake {
         
         $binary = \str_pad(\decbin(((int) $time)), 42, 0, \STR_PAD_LEFT).$workerID.$processID.\str_pad(\decbin(self::$incrementIndex), 12, 0, \STR_PAD_LEFT);
         return \bindec($binary);
-    }
-    
-    /**
-     * This method merely determines whether a given snowflake is considered valid, but not if it exists.
-     * @return bool
-     */
-    function isValid() {
-        return ($this->timestamp >= self::EPOCH && $this->timestamp < \microtime(true) && $this->workerID >= 0 && $this->workerID < 32 && $this->processID >= 0 && $this->processID < 32 && $this->increment >= 0 && $this->increment < 4096);
     }
 }

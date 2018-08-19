@@ -21,7 +21,7 @@ class ChannelDelete implements \CharlotteDunois\Yasmin\Interfaces\WSEventInterfa
         $this->client = $client;
     }
     
-    function handle(array $data) {
+    function handle(array $data): void {
         $channel = $this->client->channels->get($data['id']);
         if($channel) {
             if($channel->guild) {
@@ -29,7 +29,6 @@ class ChannelDelete implements \CharlotteDunois\Yasmin\Interfaces\WSEventInterfa
             }
             
             $this->client->channels->delete($channel->id);
-            
             $this->client->emit('channelDelete', $channel);
         }
     }

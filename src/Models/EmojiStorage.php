@@ -47,6 +47,7 @@ class EmojiStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function set($key, $value) {
         parent::set($key, $value);
@@ -59,6 +60,7 @@ class EmojiStorage extends Storage {
     
     /**
      * {@inheritdoc}
+     * @return $this
      */
     function delete($key) {
         parent::delete($key);
@@ -70,6 +72,7 @@ class EmojiStorage extends Storage {
     }
     
     /**
+     * @return \CharlotteDunois\Yasmin\Models\Emoji
      * @internal
      */
     function factory(array $data) {
