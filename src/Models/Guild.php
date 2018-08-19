@@ -761,7 +761,7 @@ class Guild extends ClientBase {
      * @param string    $format  One of png, jpg or webp.
      * @return string|null
      */
-    function getIconURL(string $format = 'png', ?int $size = null) {
+    function getIconURL(?int $size = null, string $format = 'png') {
         if($size & ($size - 1)) {
             throw new \InvalidArgumentException('Invalid size "'.$size.'", expected any powers of 2');
         }
@@ -779,7 +779,7 @@ class Guild extends ClientBase {
      * @param string    $format  One of png, jpg or webp.
      * @return string|null
      */
-    function getSplashURL(string $format = 'png', ?int $size = null) {
+    function getSplashURL(?int $size = null, string $format = 'png') {
         if($size & ($size - 1)) {
             throw new \InvalidArgumentException('Invalid size "'.$size.'", expected any powers of 2');
         }

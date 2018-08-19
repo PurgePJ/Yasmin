@@ -72,7 +72,7 @@ class Json implements \CharlotteDunois\Yasmin\Interfaces\WSEncodingInterface {
     
     /**
      * Converts all IDs from strings to integers.
-     * @param array|object
+     * @param array|object  $data
      * @return array|object
      */
     protected function convertIDs($data) {
