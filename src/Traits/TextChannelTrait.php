@@ -178,7 +178,7 @@ trait TextChannelTrait {
      * array(
      *    'embed' => array|\CharlotteDunois\Yasmin\Models\MessageEmbed, (an (embed) array/object or an instance of MessageEmbed)
      *    'files' => array, (an array of `[ 'name' => string, 'data' => string || 'path' => string ]` or just plain file contents, file paths or URLs)
-     *    'nonce' => string, (a snowflake used for optimistic sending)
+     *    'nonce' => int, (a snowflake used for optimistic sending)
      *    'disableEveryone' => bool, (whether @everyone and @here should be replaced with plaintext, defaults to client option disableEveryone)
      *    'tts' => bool,
      *    'split' => bool|array, (*)
@@ -209,7 +209,7 @@ trait TextChannelTrait {
                 }
                 
                 if(!empty($options['nonce'])) {
-                    $msg['nonce'] = $options['nonce'];
+                    $msg['nonce'] = (int) $options['nonce'];
                 }
                 
                 $disableEveryone = (isset($options['disableEveryone']) ? ((bool) $options['disableEveryone']) : $this->client->getOption('disableEveryone', true));
