@@ -449,7 +449,7 @@ class GuildMember extends ClientBase {
      */
     function _setVoiceState(array $voice) {
         $this->voiceChannelID = (!empty($voice['channel_id']) ? ((int) $voice['channel_id']) : null);
-        $this->voiceSessionID = $voice['session_id'];
+        $this->voiceSessionID = (string) $voice['session_id'];
         $this->deaf = (bool) $voice['deaf'];
         $this->mute = (bool) $voice['mute'];
         $this->selfDeaf = (bool) $voice['self_deaf'];
