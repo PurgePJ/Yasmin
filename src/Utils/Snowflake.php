@@ -11,12 +11,13 @@ namespace CharlotteDunois\Yasmin\Utils;
 
 /**
  * Represents a Snowflake.
- * @property float      $timestamp  The timestamp of when this snowflake got generated. In seconds with microseconds.
- * @property int        $workerID   The ID of the worker which generated this snowflake.
- * @property int        $processID  The ID of the process which generated this snowflake.
- * @property int        $increment  The increment index of the snowflake.
- * @property string     $binary     The binary representation of this snowflake.
- * @property \DateTime  $date       A DateTime instance of the timestamp.
+ * @property float       $timestamp  The timestamp of when this snowflake got generated. In seconds with microseconds.
+ * @property int         $workerID   The ID of the worker which generated this snowflake.
+ * @property int         $processID  The ID of the process which generated this snowflake.
+ * @property int         $increment  The increment index of the snowflake.
+ * @property string      $binary     The binary representation of this snowflake.
+ * @property string|int  $value     The snowflake value.
+ * @property \DateTime   $date       A DateTime instance of the timestamp.
  */
 class Snowflake {
     /**
@@ -28,6 +29,7 @@ class Snowflake {
     protected static $incrementIndex = 0;
     protected static $incrementTime = 0;
     
+    protected $value;
     protected $timestamp;
     protected $workerID;
     protected $processID;
@@ -41,6 +43,8 @@ class Snowflake {
      */
     function __construct($snowflake) {
         $snowflake = (int) $snowflake;
+        $this->value = $snowflake;
+        
         $this->binary = \str_pad(\decbin($snowflake), 64, 0, \STR_PAD_LEFT);
         
         $time = (string) ($snowflake >> 22);
@@ -129,5 +133,15 @@ class Snowflake {
         
         $binary = \str_pad(\decbin(((int) $time)), 42, 0, \STR_PAD_LEFT).$workerID.$processID.\str_pad(\decbin(self::$incrementIndex), 12, 0, \STR_PAD_LEFT);
         return \bindec($binary);
+    }
+    
+    /**
+     * Compute the shard ID from the snowflake.
+     * @param int  $shardCount
+     * @return int
+     */
+    function getShardID(int $shardCount) {
+        $time = $this->value >> 22;
+        return ($time % $shardCount);
     }
 }

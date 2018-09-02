@@ -13,6 +13,7 @@ namespace CharlotteDunois\Yasmin\Models;
  * Represents a guild. It's recommended to see if a guild is available before performing operations or reading data from it.
  *
  * @property int                                                            $id                           The guild ID.
+ * @property int                                                            $shardID                      On which shard this guild is.
  * @property bool                                                           $available                    Whether the guild is available.
  * @property string                                                         $name                         The guild name.
  * @property int                                                            $createdTimestamp             The timestamp when this guild was created.
@@ -137,7 +138,7 @@ class Guild extends ClientBase {
     /**
      * @internal
      */
-    function __construct(\CharlotteDunois\Yasmin\Client $client, array $guild) {
+    function __construct(\CharlotteDunois\Yasmin\Client $client, array $guild, ?int $shardID = null) {
         parent::__construct($client);
         
         $this->id = (int) $guild['id'];
@@ -155,8 +156,11 @@ class Guild extends ClientBase {
         $this->presences = new $presences($client);
         $this->roles = new $roles($client, $this);
         
+        $snowflake = \CharlotteDunois\Yasmin\Utils\Snowflake::deconstruct($this->id);
+        
+        $this->shardID = ($shardID !== null ? $shardID : $snowflake->getShardID($this->client->getOption('shardCount')));
         $this->available = (empty($guild['unavailable']));
-        $this->createdTimestamp = (int) \CharlotteDunois\Yasmin\Utils\Snowflake::deconstruct($this->id)->timestamp;
+        $this->createdTimestamp = (int) $snowflake->timestamp;
         
         if($this->available) {
             $this->_patch($guild);
@@ -646,14 +650,19 @@ class Guild extends ClientBase {
     }
     
     /**
-     * Fetches all guild members. Resolves with $this.
-     * @param string  $query  Limit fetch to members with similar usernames
-     * @param int     $limit  Maximum number of members to request
+     * Fetches all guild members. If `$query` is used, `$limit` must be set to a non-zero integer. Resolves with $this.
+     * @param string  $query  Limit fetch to members with similar usernames.
+     * @param int     $limit  Maximum number of members to request.
      * @return \React\Promise\ExtendedPromiseInterface
+     * @throws \InvalidArgumentException
      */
     function fetchMembers(string $query = '', int $limit = 0) {
+        if(!empty($query) && $limit <= 0) {
+            throw new \InvalidArgumentException('Invalid arguments given - if query is given, limit must be supplied as well');
+        }
+        
         return (new \React\Promise\Promise(function (callable $resolve, callable $reject) use ($query, $limit) {
-            if($this->members->count() === $this->memberCount) {
+            if($this->members->count() >= $this->memberCount) {
                 $resolve($this);
                 return;
             }
@@ -668,7 +677,7 @@ class Guild extends ClientBase {
                 
                 $received += $members->count();
                 
-                if((!empty($query) && $members->count() < 1000) || ($limit > 0 && $received >= $limit) || $this->members->count() === $this->memberCount) {
+                if((!empty($query) && $members->count() < 1000) || ($limit > 0 && $received >= $limit) || $this->members->count() >= $this->memberCount) {
                     if(!empty($timers)) {
                         foreach($timers as $timer) {
                             $this->client->cancelTimer($timer);
@@ -693,7 +702,7 @@ class Guild extends ClientBase {
             
             $this->client->on('guildMembersChunk', $listener);
             
-            $this->client->wsmanager()->send(array(
+            $this->client->shards->get($this->shardID)->ws->send(array(
                 'op' => \CharlotteDunois\Yasmin\WebSocket\WSManager::OPCODES['REQUEST_GUILD_MEMBERS'],
                 'd' => array(
                     'guild_id' => $this->id,
@@ -702,7 +711,7 @@ class Guild extends ClientBase {
                 )
             ));
             
-            $timers[] = $this->client->addTimer(120, function () use (&$listener, &$timers, $reject) {
+            $timers[] = $this->client->addTimer(120, function () use (&$listener, &$timers, $reject, $resolve) {
                 foreach($timers as $timer) {
                     $this->client->cancelTimer($timer);
                 }
@@ -710,7 +719,10 @@ class Guild extends ClientBase {
                 if($this->members->count() < $this->memberCount) {
                     $this->client->removeListener('guildMembersChunk', $listener);
                     $reject(new \Exception('Members did not arrive in time'));
+                    return;
                 }
+                
+                $resolve($this);
             });
         }));
     }
@@ -1106,6 +1118,10 @@ class Guild extends ClientBase {
                 $member = $this->members->get($state['user_id']);
                 if($member) {
                     $member->_setVoiceState($state);
+                    
+                    if($member->voiceChannel !== null) {
+                        $member->voiceChannel->members->set($member->id, $member);
+                    }
                 }
             }
         }

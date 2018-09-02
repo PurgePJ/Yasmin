@@ -22,16 +22,16 @@ interface ClientEvents {
     function ready();
     
     /**
-     * Emitted when the client gets disconnected from the gateway.
+     * Emitted when the shard gets disconnected from the gateway.
      * @return void
      */
-    function disconnect(int $code, string $reason);
+    function disconnect(\CharlotteDunois\Yasmin\Models\Shard $shard, int $code, string $reason);
     
     /**
-     * Emitted when the client tries to reconnect.
+     * Emitted when the shard tries to reconnect.
      * @return void
      */
-    function reconnect();
+    function reconnect(\CharlotteDunois\Yasmin\Models\Shard $shard);
     
     /**
      * Emitted when we receive a message from the gateway.
@@ -264,6 +264,13 @@ interface ClientEvents {
      * @return void
      */
     function userUpdate(\CharlotteDunois\Yasmin\Models\User $new, ?\CharlotteDunois\Yasmin\Models\User $old);
+    
+    /**
+     * Emitted when Discord responds to the user's Voice State Update event.
+     * @return void
+     * @see https://discordapp.com/developers/docs/topics/gateway#voice-server-update
+     */
+    function voiceServerUpdate(array $data);
     
     /**
      * Emitted when a member's voice state changes (leaves/joins/etc.).
