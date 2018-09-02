@@ -291,6 +291,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     }
     
     /**
+     * @param string  $name
      * @return bool
      * @throws \Exception
      * @internal
@@ -308,6 +309,7 @@ class Client implements \CharlotteDunois\Events\EventEmitterInterface, \Serializ
     }
     
     /**
+     * @param string  $name
      * @return mixed
      * @throws \RuntimeException
      * @internal
