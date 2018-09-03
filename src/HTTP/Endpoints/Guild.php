@@ -39,6 +39,7 @@ final class Guild {
             'remove' => 'guilds/%s/members/%s'
         ),
         'bans' => array(
+            'get' => 'guilds/%s/bans/%s',
             'list' => 'guilds/%s/bans',
             'create' => 'guilds/%s/bans/%s',
             'remove' => 'guilds/%s/bans/%s'
